@@ -26,10 +26,13 @@ services:
       - DB_NAME=syslog_db
       - DB_USER=syslog_user
       - DB_PASSWORD=syslog_password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
     depends_on:
       - postgres
+      - redis
     ports:
-      - "10.10.10.111:1514:1514/udp"
+      - "1514:1514/udp"
     networks:
       - syslog_network
   
@@ -49,6 +52,7 @@ services:
    restart: always
    depends_on:
      - postgres
+     - redis
    ports:
      - "8000:8000"
    volumes:
@@ -60,6 +64,8 @@ services:
     DB_DATABASE: syslog_db
     DB_USERNAME: syslog_user
     DB_PASSWORD: syslog_password
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
    networks:
     - syslog_network
   
