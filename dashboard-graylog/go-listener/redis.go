@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -39,15 +40,18 @@ func initRedis() {
 	fmt.Println("✅ Redis conectado com sucesso")
 }
 
-func publishToRedis(dto SyslogDTO) {
-	// Só enviamos para o Redis se for um alerta de segurança crítico
-	if dto.Severity != "CRITICAL" && dto.EventID != 4625 {
+// pushToRedis adaptado para receber o SyslogData vindo do processamento por Regex
+func pushToRedis(dto SyslogData) {
+	// Filtro dinâmico: Só enviamos para o Redis se for falha do Windows ou ataque em roteador
+	if dto.Severity != "CRITICAL" && dto.Severity != "EMERGENCY" {
 		return
 	}
 
-	// Estrutura payload exatamente igual ao formato de serialização de Jobs do Laravel
+	nowStr := time.Now().Format("2006-01-02T15:04:05Z07:00")
+
+	// Estrutura o payload injetando os dados normalizados na tua string de serialização do PHP
 	laravelPayload := map[string]interface{}{
-		"uuid":          "", // Pode ir vazio, o Laravel gera se necessário
+		"uuid":          "",
 		"displayName":   "App\\Jobs\\ProcessarAlertaCritico",
 		"job":           "Illuminate\\Queue\\CallQueuedHandler@call",
 		"maxTries":      nil,
@@ -58,13 +62,13 @@ func publishToRedis(dto SyslogDTO) {
 		"data": map[string]interface{}{
 			"commandName": "App\\Jobs\\ProcessarAlertaCritico",
 			"command": fmt.Sprintf(
-				"O:32:\"App\\Jobs\\ProcessarAlertaCritico\":1:{s:8:\"\x00*\x00dados\";a:6:{s:8:\"event_id\";i:%d;s:8:\"username\";s:%d:\"%s\";s:10:\"ip_address\";s:%d:\"%s\";s:11:\"mac_address\";s:%d:\"%s\";s:8:\"hostname\";s:%d:\"%s\";s:11:\"received_at\";s:%d:\"%s\";}}",
-				dto.EventID,
-				len(dto.Username), dto.Username,
-				len(dto.IPAddress), dto.IPAddress,
-				len(dto.MacAddress), dto.MacAddress,
-				len(dto.Hostname), dto.Hostname,
-				len(dto.ReceivedAt.Format("2006-01-02T15:04:05Z07:00")), dto.ReceivedAt.Format("2006-01-02T15:04:05Z07:00"),
+				"O:32:\"App\\Jobs\\ProcessarAlertaCritico\":1:{s:8:\"\x00*\x00dados\";a:6:{s:8:\"event_id\";s:%d:\"%s\";s:8:\"username\";s:%d:\"%s\";s:10:\"ip_address\";s:%d:\"%s\";s:11:\"mac_address\";s:%d:\"%s\";s:8:\"hostname\";s:%d:\"%s\";s:11:\"received_at\";s:%d:\"%s\";}}",
+				len(dto.ID), dto.ID,
+				len(dto.User), dto.User,
+				len(dto.IP), dto.IP,
+				len(dto.Mac), dto.Mac,
+				len(dto.Host), dto.Host,
+				len(nowStr), nowStr,
 			),
 		},
 	}
@@ -75,11 +79,11 @@ func publishToRedis(dto SyslogDTO) {
 		return
 	}
 
-	// Injeta diretamente na Lista (Fila) que o comando "php artisan queue:work" escuta
+	// Injeta diretamente na fila que o teu contentor automático laravel-worker está a escutar
 	err = rdb.RPush(ctxRedis, "queues:default", data).Err()
 	if err != nil {
 		fmt.Printf("❌ Erro ao inserir na fila do Redis: %v\n", err)
 	} else {
-		fmt.Println("🚀 Alerta crítico injetado diretamente na Queue do Redis.")
+		fmt.Println("🚀 Alerta crítico/emergência injetado diretamente na Queue do Redis.")
 	}
 }

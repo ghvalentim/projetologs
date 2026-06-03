@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -32,26 +33,30 @@ func initDB() {
 	fmt.Println("✅ PostgreSQL conectado com sucesso")
 }
 
-func insertSyslog(dto SyslogDTO) {
+// insertSyslog atualizado para receber o novo DTO SyslogData normalizado pelo Regex
+func insertSyslog(dto SyslogData) error {
+	// Query ajustada com os nomes exatos das colunas da tabela gerada pelas migrations do Laravel/Filament
+	// Inclui os timestamps padrão (created_at e updated_at) para o Laravel não reclamar
 	query := `
 		INSERT INTO syslogs 
-		(event_id, ip_address, mac_address, hostname, workstation, workgroup, severity, username, message, received_at) 
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		(id_evento, ip_origem, mac_origem, hostname, workstation, workgroup, severity, username, mensagem, created_at, updated_at) 
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`
+	now := time.Now()
 	_, err := db.Exec(
 		query,
-		dto.EventID,
-		dto.IPAddress,
-		dto.MacAddress,
-		dto.Hostname,
+		dto.ID,
+		dto.IP,
+		dto.Mac,
+		dto.Host,
 		dto.Workstation,
 		dto.Workgroup,
 		dto.Severity,
-		dto.Username,
-		dto.RawMessage,
-		dto.ReceivedAt,
+		dto.User,
+		dto.Msg,
+		now, // created_at
+		now, // updated_at
 	)
-	if err != nil {
-		fmt.Printf("❌ Erro ao inserir log no Postgres: %v\n", err)
-	}
+
+	return err
 }

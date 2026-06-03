@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
@@ -98,7 +96,13 @@ func ProcessRawLog(rawMessage string, clientIP string) {
 
 	// Se for algo grave (CRITICAL ou EMERGENCY), manda direto pro painel via Redis/Laravel Worker
 	if logData.Severity == "CRITICAL" || logData.Severity == "EMERGENCY" {
-		pushToRedis(logData)
+		err := sendToRedis(logData)
+		if err != nil {
+			fmt.Printf("❌ Erro ao enviar para Redis: %v\n", err)
+			return
+		}
+
+		fmt.Println("✅ Log crítico/emergência processado e enviado para o painel com sucesso.")
 	}
 }
 
@@ -113,25 +117,9 @@ func saveToPostgres(data SyslogData) error {
 	return err
 }
 
-func pushToRedis(data SyslogData) error {
-	ctx := context.Background()
-
-	// ⚠️ ATENÇÃO: O Laravel não aceita um JSON simples solto no Redis se usares filas (Queue)
-	// Ele exige um envelope estruturado indicando qual Job do PHP deve processar o dado.
-	payload := LaravelJobPayload{
-		DisplayName: "App\\Jobs\\ProcessarAlertaCritico",
-		Job:         "App\\Jobs\\ProcessarAlertaCritico",
-		MaxTries:    nil,
-		Delay:       nil,
-		Timeout:     nil,
-	}
-	payload.Data.LogData = data
-
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	// Injeta na chave exata que o teu "QUEUE_CONNECTION=redis" do Laravel escuta no .env
-	return rdb.RPush(ctx, "queues:default", jsonData).Err()
+func sendToRedis(data SyslogData) error {
+	// Encaminha o fluxo diretamente para a função centralizada do redis.go
+	// que trata do payload serializado em PHP
+	pushToRedis(data)
+	return nil
 }
