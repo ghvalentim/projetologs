@@ -80,32 +80,34 @@ func getLocalMAC() string {
 
 // StartUDPServer inicializa o listener de Syslog e escuta pacotes de forma assíncrona
 func StartUDPServer() (*net.UDPConn, error) {
-	port := getEnv("LISTENER_PORT", "1514")
-	addr, err := net.ResolveUDPAddr("udp", ":"+port)
+	port := getEnv("LISTENER_PORT", "1514") // Padrão do teu container interno
+
+	// ⚠️ Mudar de 127.0.0.1 para 0.0.0.0 para aceitar conexões vindas de fora do container
+	addr, err := net.ResolveUDPAddr("udp", "0.0.0.0:"+port)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao resolver endereço UDP: %w", err)
 	}
 
-	conn, err := net.ListenUDP("udp", addr)
+	ser, err := net.ListenUDP("udp", addr)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao iniciar servidor UDP na porta %s: %w", port, err)
 	}
 
-	fmt.Printf("📡 Servidor UDP escutando com sucesso na porta %s\n", port)
+	fmt.Printf("📡 Servidor UDP escutando com sucesso na porta %s em todas as interfaces\n", port)
 
 	// Dispara a goroutine de leitura para não travar a main thread
-	go listenLoop(conn)
+	go listenLoop(ser)
 
-	return conn, nil
+	return ser, nil
 }
 
 // listenLoop processa continuamente os pacotes que entram na placa de rede
-func listenLoop(conn *net.UDPConn) {
+func listenLoop(ser *net.UDPConn) {
 	// Buffer de 4096 bytes é ideal para a maioria dos payloads XML de Syslog
-	buf := make([]byte, 4096)
+	p := make([]byte, 4096)
 
 	for {
-		n, remoteAddr, err := conn.ReadFromUDP(buf)
+		n, remoteAddr, err := ser.ReadFromUDP(p)
 		if err != nil {
 			// Evita flood de logs no console caso a conexão seja fechada intencionalmente
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
@@ -116,12 +118,13 @@ func listenLoop(conn *net.UDPConn) {
 		}
 
 		// Captura o payload bruto
-		payload := string(buf[:n])
+		payload := string(p[:n])
+		clientIP := remoteAddr.IP.String()
 
 		// Opcional: Log de depuração para ambiente de desenvolvimento no Windows
 		fmt.Printf("📥 Pacote recebido de %s (%d bytes)\n", remoteAddr, n)
 
 		// Envia a string bruta para o canal de processamento do worker
-		logChannel <- payload
+		go ProcessRawLog(payload, clientIP)
 	}
 }
