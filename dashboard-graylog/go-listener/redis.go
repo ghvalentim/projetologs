@@ -79,8 +79,8 @@ func pushToRedis(dto SyslogData) {
 		return
 	}
 
-	// Injeta diretamente na fila que o teu contentor automático laravel-worker está a escutar
-	err = rdb.RPush(ctxRedis, "queues:default", data).Err()
+	// Injeta diretamente na chave com o prefixo padrão que o Laravel Database Configuration usa
+	err = rdb.RPush(ctxRedis, "laravel_database_queues:default", data).Err()
 	if err != nil {
 		fmt.Printf("❌ Erro ao inserir na fila do Redis: %v\n", err)
 	} else {
