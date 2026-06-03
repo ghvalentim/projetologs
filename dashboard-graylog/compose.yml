@@ -91,7 +91,8 @@ services:
     REDIS_HOST: redis
     REDIS_PORT: 6379
     QUEUE_CONNECTION: redis
-   command: docker compose exec laravel-app php artisan queue:work --verbose --tries=3 --timeout=90
+   entrypoint: ["php","artisan","queue:work"]
+   command: ["--tries=3"]
    networks:
     - syslog_network
 
