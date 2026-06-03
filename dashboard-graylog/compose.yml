@@ -1,0 +1,76 @@
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: syslog_db
+    restart: always
+    environment:
+      POSTGRES_USER: syslog_user
+      POSTGRES_DB: syslog_db
+      POSTGRES_PASSWORD: syslog_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - syslog_network
+    
+  go-listener:
+    build:
+      context: ./go-listener
+    container_name: syslog_go_listener
+    restart: always
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=syslog_db
+      - DB_USER=syslog_user
+      - DB_PASSWORD=syslog_password
+    depends_on:
+      - postgres
+    ports:
+      - "10.10.10.111:1514:1514/udp"
+    networks:
+      - syslog_network
+  
+  redis:
+   image: redis:alpine
+   container_name: syslog_redis
+   ports:
+    - "6379:6379"
+   volumes:
+    - redis_data:/data
+   networks:
+    - syslog_network  
+  laravel-app:
+   build:
+      context: ./laravel-panel
+   container_name: syslog_laravel
+   restart: always
+   depends_on:
+     - postgres
+   ports:
+     - "8000:8000"
+   volumes:
+     - ./laravel-panel:/var/www
+   environment:
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_DATABASE: syslog_db
+    DB_USERNAME: syslog_user
+    DB_PASSWORD: syslog_password
+   networks:
+    - syslog_network
+  
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  syslog_network:
+    driver: bridge
+  
+  
+  
+
