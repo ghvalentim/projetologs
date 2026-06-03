@@ -70,7 +70,31 @@ services:
     QUEUE_CONNECTION: redis
    networks:
     - syslog_network
-  
+  laravel-worker:
+   build:
+      context: ./laravel-panel
+   container_name: syslog_laravel_worker
+   restart: always
+   depends_on:
+       - postgres
+       - redis
+       - laravel-app
+   volumes:
+       - ./laravel-panel:/var/www
+   environment:
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: 5432
+    DB_DATABASE: syslog_db
+    DB_USERNAME: syslog_user
+    DB_PASSWORD: syslog_password
+    REDIS_HOST: redis
+    REDIS_PORT: 6379
+    QUEUE_CONNECTION: redis
+   command: php artisan queue:work --verbose --tries=3 --timeout=90
+   networks:
+    - syslog_network
+
 volumes:
   postgres_data:
   redis_data:

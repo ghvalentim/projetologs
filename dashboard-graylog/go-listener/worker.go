@@ -35,66 +35,70 @@ type LaravelJobPayload struct {
 }
 
 // ProcessRawLog recebe a string bruta do Windows e normaliza os dados
+// ProcessRawLog expandido para detetar anomalias de Roteadores e Windows
 func ProcessRawLog(rawMessage string, clientIP string) {
 	fmt.Printf("📥 Log bruto recebido: %s\n", rawMessage)
 
-	// 1. Criar uma instância limpa do nosso DTO com valores padrão
 	logData := SyslogData{
 		IP:          clientIP,
 		Mac:         "N/A",
-		Workgroup:   "WORKGROUP",
-		Severity:    "INFO", // Padrão
-		Workstation: "UNKNOWN",
+		Workgroup:   "CÂMARA-MUNICIPAL",
+		Severity:    "INFO",
+		Workstation: "NETWORK-DEVICE",
 		Host:        "UNKNOWN",
 	}
 
-	// 2. Extrair o Event ID do Windows (ex: procura por "4625" ou "4624")
-	idRegex := regexp.MustCompile(`\b(4625|4624|4720|4634)\b`)
-	if match := idRegex.FindString(rawMessage); match != "" {
-		logData.ID = match
-		if match == "4625" {
-			logData.Severity = "CRITICAL" // Falha de autenticação é crítico!
-		}
-	} else {
-		logData.ID = "0" // ID genérico se não identificar
-	}
-
-	// 3. Extrair o Hostname
+	// 1. Extrair o Hostname / Identificador do dispositivo
 	words := strings.Fields(rawMessage)
 	if len(words) > 3 {
-		logData.Host = words[3]
+		logData.Host = words[3] // Ex: ROTEADOR-CENTRAL ou DESKTOP-GABS
 		logData.Workstation = words[3]
 	}
 
-	// 4. Extrair o Utilizador envolvido
-	userRegex := regexp.MustCompile(`(?i)(?:user|utilizador)[:\s]+([a-zA-Z0-9._-]+)`)
-	if matches := userRegex.FindStringSubmatch(rawMessage); len(matches) > 1 {
-		logData.User = matches[1]
-	} else {
-		logData.User = "SYSTEM" // Fallback
-	}
+	// 2. IDENTIFICAÇÃO DE ANOMALIAS DE REDE E SEGURANÇA
 
-	// 5. A mensagem completa passa a ser o texto limpo
-	logData.Msg = rawMessage
+	// Padrão A: Falhas de Autenticação (Windows Event 4625 ou Roteadores "LOGIN_FAILED" / "Authentication failed")
+	authFailRegex := regexp.MustCompile(`(?i)(4625|LOGIN_FAILED|Authentication\s+failed|failed\s+login)`)
 
-	// --- FIM DA NORMALIZAÇÃO ---
+	// Padrão B: Tentativas de Invasão / Ataques (PortScan, BruteForce, DoS, packet drop na Firewall)
+	attackRegex := regexp.MustCompile(`(?i)(PortScan|BruteForce|Attack|DoS|drop|deny|unauthorized)`)
 
-	// 6. Gravar no PostgreSQL na tabela `syslogs` mapeada com as colunas certas do Laravel
-	err := saveToPostgres(logData)
-	if err != nil {
-		fmt.Printf("❌ Erro ao salvar no Postgres: %v\n", err)
-		return
-	}
-	fmt.Println("✅ Log normalizado e guardado no PostgreSQL!")
+	if authFailRegex.MatchString(rawMessage) {
+		logData.ID = "AUTH_FAIL"
+		logData.Severity = "CRITICAL"
 
-	// 7. Se for Crítico (Event 4625), injetar no Redis no formato que o Laravel Queue compreende
-	if logData.Severity == "CRITICAL" {
-		err := pushToRedis(logData)
-		if err != nil {
-			fmt.Printf("❌ Erro ao enviar para o Redis: %v\n", err)
-			return
+		// Tenta capturar o utilizador que tentaram usar no ataque
+		userRegex := regexp.MustCompile(`(?i)(?:user|utilizador)[:\s"']\s*([a-zA-Z0-9._-]+)`)
+		if matches := userRegex.FindStringSubmatch(rawMessage); len(matches) > 1 {
+			logData.User = matches[1]
+		} else {
+			logData.User = "UNKNOWN_TARGET"
 		}
-		fmt.Println("🚀 Alerta crítico injetado no Redis para o painel Laravel!")
+		logData.Msg = "🚨 ALERTA DE SEGURANÇA: Falha de Autenticação detetada."
+
+	} else if attackRegex.MatchString(rawMessage) {
+		logData.ID = "ATTACK_DETECTED"
+		logData.Severity = "EMERGENCY" // Nível máximo para o Laravel disparar notificações
+		logData.User = "FIREWALL"
+		logData.Msg = "🛡️ Bloqueio Ativo: Tentativa de Intrusão/Anomalia na Firewall."
+
+	} else {
+		// Se o log passou pelos filtros do roteador mas não é crítico, categoriza como Info/Warning
+		logData.ID = "SYS_WARN"
+		logData.Severity = "WARNING"
+		logData.User = "SYSTEM"
+		logData.Msg = "Aviso do Sistema de Rede."
+	}
+
+	// Preserva o texto bruto original no campo final para auditoria profunda no Laravel
+	logData.Msg = logData.Msg + " | Log Original: " + rawMessage
+
+	// --- PERSISTÊNCIA COMPLETA AUTOMÁTICA ---
+	saveToPostgres(logData)
+
+	// Se for algo grave (CRITICAL ou EMERGENCY), manda direto pro painel via Redis/Laravel Worker
+	if logData.Severity == "CRITICAL" || logData.Severity == "EMERGENCY" {
+		pushToRedis(logData)
 	}
 }
 
