@@ -80,7 +80,7 @@ func getLocalMAC() string {
 
 // StartUDPServer inicializa o listener de Syslog e escuta pacotes de forma assíncrona
 func StartUDPServer() (*net.UDPConn, error) {
-	port := getEnv("LISTENER_PORT", "514")
+	port := getEnv("LISTENER_PORT", "1514")
 	addr, err := net.ResolveUDPAddr("udp", ":"+port)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao resolver endereço UDP: %w", err)
