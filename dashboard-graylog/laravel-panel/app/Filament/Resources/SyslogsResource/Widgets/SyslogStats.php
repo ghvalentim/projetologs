@@ -23,7 +23,7 @@ class SyslogStats extends BaseWidget
 
         // 2. Total de Erros/Críticos nas últimas 24h
         $totalErros = Syslog::where('received_at', '>=', $atras24h)
-            ->whereIn('severity', ['ERROR', 'CRITICAL'])
+            ->whereIn('severity', ['EMERGENCY', 'CRITICAL'])
             ->count();
 
         // 3. Descobrir o IP mais ativo

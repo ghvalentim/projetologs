@@ -2,56 +2,53 @@
 
 namespace App\Jobs;
 
+use App\Models\Syslog;
+use App\Models\User;
+use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\AlertaSegurancaCritico;
 
 class ProcessarAlertaCritico implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $syslogData;
+    public array $logData;
 
-    public function __construct(array $syslogData)
+    public function __construct(array $logData)
     {
-        $this->syslogData = $syslogData;
+        $this->logData = $logData;
     }
 
     public function handle(): void
-    {
-        $eventId = $this->syslogData['event_id'] ?? 0;
-        $username = $this->syslogData['username'] ?? 'Desconhecido';
-        $ip = $this->syslogData['ip_address'] ?? '127.0.0.1';
+{
+    // Salva o log usando os índices exatos mapeados no Go
+    $syslog = Syslog::create([
+        'event_id'    => $this->logData['id'] ?? '0',
+        'hostname'    => $this->logData['host'] ?? 'UNKNOWN',
+        'ip_address'  => $this->logData['ip'] ?? '127.0.0.1',
+        'username'    => $this->logData['user'] ?? 'SYSTEM',
+        'severity'    => $this->logData['severity'] ?? 'INFO',
+        'message'     => $this->logData['msg'] ?? 'Alerta crítico de rede',
+        'received_at' => now(),
+    ]);
 
-        // 🧠 A RESPONSABILIDADE DE FORMATAÇÃO E REGRAS VIVE AQUI!
-        $mensagemFormatada = "";
+    // Dispara para o Filament
+    $recipient = User::first(); 
 
-        switch ($eventId) {
-            case 4625:
-                $mensagemFormatada = "Alerta de Segurança: Tentativa de login FALHADA para o utilizador [{$username}] com origem no IP {$ip}.";
-                break;
-            
-            // Se um dia adicionares logs da firewall ou outros IDs:
-            case 2004: 
-            case 2006:
-                $mensagemFormatada = "Infraestrutura: Conexão de rede bloqueada pela Firewall com origem em {$ip}.";
-                break;
+    if ($recipient && in_array($syslog->severity, ['CRITICAL', 'EMERGENCY'])) {
+        $titulo = $syslog->severity === 'EMERGENCY' 
+            ? '🚨 EMERGENCY: INTRUSÃO ATIVA!' 
+            : '⚠️ ALERTA CRÍTICO: Falha de Segurança';
 
-            default:
-                $mensagemFormatada = "Log de Auditoria Geral recebido do sistema.";
-                break;
-        }
-
-        // Agora guardas ou disparas o evento formatado para o teu Tauri/Livewire
-        Log::info("📢 [SIEM CORE] Evento Processado pelo Laravel: " . $mensagemFormatada);
-
-        // Atualiza a tabela com a mensagem amigável final ou transmite via Redis para o front-end
-
-        Mail::to('admin@empresa.com')->send(new AlertaSegurancaCritico($this->syslogData));
+        \Filament\Notifications\Notification::make()
+            ->title($titulo)
+            ->icon($syslog->severity === 'EMERGENCY' ? 'heroicon-o-fire' : 'heroicon-o-shield-exclamation')
+            ->body("O dispositivo **{$syslog->hostname}** gerou um log crítico.")
+            ->color($syslog->severity === 'EMERGENCY' ? 'danger' : 'warning')
+            ->sendToDatabase($recipient);
     }
+}
 }

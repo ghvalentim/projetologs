@@ -9,28 +9,63 @@ use Illuminate\Support\Facades\DB;
 
 class SyslogPieChart extends ChartWidget
 {
-    protected  ?string $heading = 'Distribuição por Severidade (Hoje)';
+    // O cabeçalho adapta-se dinamicamente ao filtro selecionado
+    public function getHeading(): string
+    {
+        return $this->filter === 'dia' 
+            ? 'Distribuição por Severidade (Últimos 7 Dias)' 
+            : 'Distribuição por Severidade (Hoje)';
+    }
 
-    protected ?string $maxHeight = '280px';
+    protected function getExtraAttributes(): array
+{
+    return [
+        'class' => 'transition-all duration-500 ease-in-out',
+    ];
+}
+
+    protected ?string $maxHeight = '300px';
 
     protected ?string $pollingInterval = '10s';
 
+    // 1. Cria o dropdown de seleção nativo do Filament
+    protected function getFilters(): ?array
+    {
+        return [
+            'hora' => 'Hoje',
+            'dia' => 'Últimos 7 Dias',
+        ];
+    }
+
     protected function getData(): array
     {
-        // Filtra apenas os logs do dia de hoje
+        // Captura o filtro ativo (padrão é 'hora', que significa Hoje)
+        $filtroAtivo = $this->filter ?? 'hora';
+
+        // 2. Decide o período de tempo baseado no filtro
+        if ($filtroAtivo === 'dia') {
+            $inicioPeriodo = Carbon::today()->subDays(6);
+            $fimPeriodo = Carbon::tomorrow()->subSecond();
+        } else {
+            $inicioPeriodo = Carbon::today();
+            $fimPeriodo = Carbon::tomorrow()->subSecond();
+        }
+
+        // 3. Executa a query ao Postgres agrupando por severidade no período definido
         $severidades = Syslog::select('severity', DB::raw('count(*) as total'))
-            ->where('received_at', '>=', Carbon::today())
+            ->whereBetween('received_at', [$inicioPeriodo, $fimPeriodo])
             ->groupBy('severity')
             ->pluck('total', 'severity')
             ->toArray();
 
-        // Garante uma ordem bonita para a legenda e mapeia os dados
-        $labels = ['INFO', 'WARNING', 'ERROR', 'CRITICAL'];
+        // 4. Garante a ordem exata das fatias da pizza e das legendas
+        $labels = ['INFO', 'WARNING', 'CRITICAL', 'EMERGENCY', 'SUCCESS'];
         $data = [
             $severidades['INFO'] ?? 0,
             $severidades['WARNING'] ?? 0,
-            $severidades['ERROR'] ?? 0,
             $severidades['CRITICAL'] ?? 0,
+            $severidades['EMERGENCY'] ?? 0,
+            $severidades['SUCCESS'] ?? 0,
         ];
 
         return [
@@ -38,13 +73,16 @@ class SyslogPieChart extends ChartWidget
                 [
                     'label' => 'Total de Logs',
                     'data' => $data,
-                    // Cores correspondentes: Verde, Laranja, Vermelho Claro, Vermelho Escuro
                     'backgroundColor' => [
-                        '#10b981', // emerald-500
-                        '#f59e0b', // amber-500
-                        '#ef4444', // red-500
-                        '#b91c1c', // red-700
+                        '#0066FF', // INFO (Azul Vivo)
+                        '#CCFF00', // WARNING (Amarelo Radioativo)
+                        '#FF5F00', // CRITICAL (Laranja Neon)
+                        '#FF0000', // EMERGENCY (Vermelho Berrante)
+                        '#00FF66', // SUCCESS (Verde)
                     ],
+                    // Cor da borda que separa as fatias da pizza (combina bem no modo dark/light)
+                    'borderColor' => '#1e293b', 
+                    'borderWidth' => 2,
                 ],
             ],
             'labels' => $labels,
@@ -53,7 +91,23 @@ class SyslogPieChart extends ChartWidget
 
     protected function getType(): string
     {
-        // Define o tipo como 'pie' (pizza)
         return 'pie';
     }
+
+    protected function getOptions(): array
+{
+    return [
+        'animation' => [
+            'duration' => 1200, // Um pouco mais lento para dar aquele efeito cinematográfico
+            'easing' => 'easeOutBounce', // Dá um pequeno "ressalto" elástico muito profissional no fim
+            'animateRotate' => true, // Faz a pizza rodar ao aparecer
+            'animateScale' => true,  // Faz a pizza crescer do centro para fora
+        ],
+        'plugins' => [
+            'legend' => [
+                'position' => 'bottom', // Coloca as legendas em baixo para dar mais espaço
+            ],
+        ],
+    ];
+}
 }

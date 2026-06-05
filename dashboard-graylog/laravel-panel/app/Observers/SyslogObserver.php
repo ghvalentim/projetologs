@@ -8,60 +8,35 @@ use Filament\Notifications\Notification;
 
 class SyslogObserver
 {
-    /**
-     * Handle the Syslog "created" event.
-     */
     public function created(Syslog $syslog): void
     {
-        if ($syslog->severity === 'CRITICAL') {
+        if (in_array($syslog->severity, ['CRITICAL', 'EMERGENCY'])) {
+            
+            // Pega todos os administradores que vão receber o alerta
             $users = User::all();
 
-            foreach ($users as $user) {
-                Notification::make()
-                ->title('Alerta Crítico de Segurança')
-                ->icon('heroicon-o-shield-exclamation')
-                ->iconColor('danger')
-                ->body($syslog->message)
+            $titulo = $syslog->severity === 'EMERGENCY' 
+                ? '🚨 EMERGENCY: INTRUSÃO ATIVA!' 
+                : '⚠️ ALERTA CRÍTICO: Falha de Segurança';
+
+            // Monta o objeto de notificação do Filament
+            $filamentNotification = Notification::make()
+                ->title($titulo)
+                ->icon($syslog->severity === 'EMERGENCY' ? 'heroicon-o-fire' : 'heroicon-o-shield-exclamation')
+                ->body("O dispositivo **{$syslog->hostname}** gerou um log de nível **{$syslog->severity}**.")
                 ->actions([
-                        \Filament\Notifications\Actions\Action::make('view')
-                        ->button()->label('Ver Detalhes')
-                        ->url(fn () => route('filament.admin.resources.syslogs.index', ['tableSearch' => $syslog->ip_address]))
-                    ])
-                ->danger()
-                ->sendToDatabase($user);
+                    \Filament\Notifications\Actions\Action::make('view')
+                        ->label('Ir para a Ocorrência')
+                        ->button()
+                        ->url(fn () => "/admin/syslogs"), 
+                ])
+                ->color($syslog->severity === 'EMERGENCY' ? 'danger' : 'warning')
+                ->duration(15000);
+
+            // Dispara para cada utilizador usando o método oficial .notify()
+            foreach ($users as $recipient) {
+                $recipient->notify($filamentNotification->toDatabase());
             }
         }
-    }
-
-    /**
-     * Handle the Syslog "updated" event.
-     */
-    public function updated(Syslog $syslog): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Syslog "deleted" event.
-     */
-    public function deleted(Syslog $syslog): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Syslog "restored" event.
-     */
-    public function restored(Syslog $syslog): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Syslog "force deleted" event.
-     */
-    public function forceDeleted(Syslog $syslog): void
-    {
-        //
     }
 }

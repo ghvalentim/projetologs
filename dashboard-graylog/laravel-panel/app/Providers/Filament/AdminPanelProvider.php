@@ -43,6 +43,13 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->colors([
                 'primary' => Color::Amber,
+                'secondary' => Color::Slate,
+                'success' => Color::Green,
+                'info' => Color::Blue,
+                'warning' => Color::Yellow,
+                'critical' => Color::Orange,
+                'emergency' => Color::Red,
+                'gray' => Color::Gray,
             ])
             ->profile(EditProfile::class)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')

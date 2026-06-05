@@ -109,6 +109,7 @@ func listenLoop(ser *net.UDPConn) {
 	for {
 		n, remoteAddr, err := ser.ReadFromUDP(p)
 		if err != nil {
+			fmt.Printf("📡 BYTES BRUTOS RECEBIDOS de %s: %s\n", remoteAddr, string(p[:n]))
 			// Evita flood de logs no console caso a conexão seja fechada intencionalmente
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				continue

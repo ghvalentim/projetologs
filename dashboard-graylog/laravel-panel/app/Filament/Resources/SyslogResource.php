@@ -86,14 +86,18 @@ class SyslogResource extends Resource
                     ->label('Severidade')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'CRITICAL' => 'danger',
+                        'EMERGENCY' => 'emergency',
+                        'CRITICAL' => 'critical',
                         'WARNING'  => 'warning',
-                        'INFO'     => 'success',
+                        'SUCCESS'  => 'success',
+                        'INFO'     => 'info',
                         default    => 'gray',
                     })
                     ->icon(fn (string $state): string => match ($state) {
+                        'EMERGENCY' => 'heroicon-m-x-circle',
                         'CRITICAL' => 'heroicon-m-exclamation-triangle',
                         'WARNING'  => 'heroicon-m-bell',
+                        'SUCCESS'  => 'heroicon-m-check-circle',
                         'INFO'     => 'heroicon-m-information-circle',
                         default    => 'heroicon-m-question-mark-circle',
                     }),
@@ -103,18 +107,35 @@ class SyslogResource extends Resource
                 SelectFilter::make('severity')
                     ->label('Filtrar por Severidade')
                     ->options([
-                        'CRITICAL' => '🚨 Crítico',
-                        'WARNING'  => '⚠️ Aviso',
-                        'INFO'     => 'ℹ️ Informação',
+                    'EMERGENCY' => '🚨 Emergência', 
+                    'CRITICAL' => '🚨 Crítico',
+                    'WARNING'  => '⚠️ Aviso',
+                    'SUCCESS'  => '✅ Sucesso',
+                    'INFO'     => 'ℹ️ Informação',
                     ]),
 
                 SelectFilter::make('event_id')
                     ->label('Tipo de Evento')
                     ->options([
+                        1149 => '1149 - Tentativa de Logon Interativo',
+                        1249 => '1249 - Tentativa de Logon de Rede',
+                        2149 => '2149 - Tentativa de Logon Remoto',
+                        3149 => '3149 - Tentativa de Logon de Serviço',
+                        4624 => '4624 - Logon Bem Sucedido',
                         4625 => '4625 - Falha de Autenticação',
+                        4656 => '4656 - Tentativa de Acesso a Objeto',
+                        4740 => '4740 - Conta Bloqueada',
+                        4768 => '4768 - Ticket de Logon Kerberos Solicitado',
+                        4769 => '4769 - Ticket de Serviço Kerberos Solicitado',
+                        4946 => '4946 - Regra de Firewall Permitida',
+                        4947 => '4947 - Regra de Firewall Negada',
+                        4957 => '4957 - Conexão Rejeitada pela Firewall',
+                        5140 => '5140 - Acesso a Compartilhamento de Arquivos',
+                        5142 => '5142 - Acesso a Compartilhamento de Arquivos Negado',
                         5152 => '5152 - Bloqueio de Firewall',
                         2004 => '2004 - Regra de Firewall Alterada',
-                    ]),
+
+                    ]),    
 
                 Filter::make('received_at')
                     ->label('Intervalo de Datas')
@@ -220,9 +241,11 @@ class SyslogResource extends Resource
                     ->label('Resultado do Alerta')
                     ->weight('bold')
                     ->color(fn ($record) => match ($record->severity) {
-                        'CRITICAL' => 'danger',
-                        'WARNING'  => 'warning',
-                        'INFO'     => 'success',
+                        'EMERGENCY' => '#ff0000',
+                        'CRITICAL' => '#ff7300',
+                        'WARNING'  => '#fff700',
+                        'SUCCESS'  => '#00ff62',
+                        'INFO'     => '#0062ff',
                         default    => 'gray',
                     }),
                     Grid::make(3)->schema([
