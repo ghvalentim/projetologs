@@ -26,14 +26,19 @@ class Syslog extends Model
         'severity',
         'username',
         'message', 
-        'received_at'
+        'received_at',
+        'country', 
+        'city', 
+        'latitude', 
+        'longitude',
+        'is_exception'
     ];
 
     protected function casts(): array
     {
         return [
-            'event_id' => 'integer',
             'received_at' => 'datetime',
+            'is_exception' => 'boolean',
         ];
     }
 
@@ -47,11 +52,13 @@ class Syslog extends Model
             $ip = $this->ip_address ?? '127.0.0.1';
             $maquinaOrigem = $this->workstation ?? $this->hostname ?? 'Host Desconhecido';
 
-            return match ($this->event_id) {
-                4625 => "🚨 Alerta de Segurança: Tentativa de autenticação FALHADA para o utilizador [{$username}] na estação [{$maquinaOrigem}] com origem no IP {$ip}.",
+            return match ((string)$this->event_id) {
+                '4625' => "🚨 Alerta de Segurança: Tentativa de autenticação FALHADA para o utilizador [{$username}] na estação [{$maquinaOrigem}] com origem no IP {$ip}.",
+                '4624' => "✅ Sucesso de Login: O utilizador [{$username}] autenticou-se com SUCESSO na estação [{$maquinaOrigem}] a partir do IP {$ip}.",
+                '4798' => "🔍 Auditoria de Contas: O utilizador [{$username}] foi ADICIONADO ao grupo de administradores locais na estação [{$maquinaOrigem}].",
                 
                 // IDs comuns de monitorização de rede ou regras de firewall do Windows
-                2004, 2006, 5152 => "⚠️ Firewall: Uma ligação de rede com origem em {$ip} foi bloqueada pelas diretivas do sistema.",
+                '2004', '2006', '5152' => "⚠️ Firewall: Uma ligação de rede com origem em {$ip} foi bloqueada pelas diretivas do sistema.",
                 
                 default => !empty($this->username) 
                     ? "ℹ️ Auditoria: Atividade registada para o utilizador [{$username}] no host {$this->hostname} (Workstation: {$this->workstation})."
@@ -63,7 +70,7 @@ class Syslog extends Model
     protected static function booted(): void
     {
         static::created(function (Syslog $syslog) {
-            if ($syslog->severity === 'CRITICAL' || $syslog->event_id === 4625) {
+            if ($syslog->severity === 'CRITICAL' || $syslog->event_id === '4625') {
                 
                 ProcessarAlertaCritico::dispatch([
                     'event_id'    => $syslog->event_id,

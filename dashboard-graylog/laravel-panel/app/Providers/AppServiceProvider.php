@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Jobs\ProcessarAlertaCritico;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Syslog;
 use App\Observers\SyslogObserver;
@@ -21,6 +22,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-       Syslog::observe(SyslogObserver::class);
+       Syslog::observe(ProcessarAlertaCritico::class);
     }
 }

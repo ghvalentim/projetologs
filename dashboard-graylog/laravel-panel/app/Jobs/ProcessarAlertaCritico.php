@@ -36,17 +36,18 @@ class ProcessarAlertaCritico implements ShouldQueue
     ]);
 
     // Dispara para o Filament
-    $recipient = User::first(); 
+    $recipient = User::all(); 
 
     if ($recipient && in_array($syslog->severity, ['CRITICAL', 'EMERGENCY'])) {
         $titulo = $syslog->severity === 'EMERGENCY' 
             ? '🚨 EMERGENCY: INTRUSÃO ATIVA!' 
             : '⚠️ ALERTA CRÍTICO: Falha de Segurança';
 
-        \Filament\Notifications\Notification::make()
+        Notification::make()
             ->title($titulo)
             ->icon($syslog->severity === 'EMERGENCY' ? 'heroicon-o-fire' : 'heroicon-o-shield-exclamation')
-            ->body("O dispositivo **{$syslog->hostname}** gerou um log crítico.")
+            ->body("Máquina: {$this->logData['host']} | Mensagem: {$this->logData['msg']}")
+            ->danger()
             ->color($syslog->severity === 'EMERGENCY' ? 'danger' : 'warning')
             ->sendToDatabase($recipient);
     }

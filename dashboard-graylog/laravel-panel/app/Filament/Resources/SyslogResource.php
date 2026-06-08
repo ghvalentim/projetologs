@@ -20,7 +20,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Dotswan\MapPicker\Fields\Map;
+use Filament\Actions\Action;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 class SyslogResource extends Resource
 {
@@ -68,39 +73,33 @@ class SyslogResource extends Resource
                     ->label('IP Origem')
                     ->copyable(),
 
-                TextColumn::make('hostname')
-                    ->label('Máquina')
-                    ->toggleable(isToggledHiddenByDefault: true), // Esconde por defeito para dar prioridade à Workstation
-
                 // 🆕 Nova coluna estruturada vinda do Windows
                 TextColumn::make('workstation')
                     ->label('Estação (Workstation)')
                     ->searchable(),
-
-                // 🆕 Nova coluna de domínio/grupo do Windows
-                TextColumn::make('workgroup')
-                    ->label('Domínio / Grupo')
-                    ->toggleable(),
-
                 TextColumn::make('severity')
                     ->label('Severidade')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'EMERGENCY' => 'emergency',
-                        'CRITICAL' => 'critical',
-                        'WARNING'  => 'warning',
+                    ->color(fn (Syslog $syslog): string => $syslog->is_exception ? 'exception' : match ($syslog->severity) {
+                        'EMERGENCY' => 'danger',
+                        'CRITICAL' => 'warning',
+                        'WARNING'  => 'yellow',
                         'SUCCESS'  => 'success',
                         'INFO'     => 'info',
+                        'AUDIT'    => 'audit',
+                        'EXCEPTION' => 'exception',
                         default    => 'gray',
                     })
-                    ->icon(fn (string $state): string => match ($state) {
-                        'EMERGENCY' => 'heroicon-m-x-circle',
-                        'CRITICAL' => 'heroicon-m-exclamation-triangle',
-                        'WARNING'  => 'heroicon-m-bell',
+                    ->icon(fn (Syslog $syslog): string => $syslog->is_exception ? 'heroicon-m-eye-slash' : match ($syslog->severity) {
+                        'EMERGENCY' => 'heroicon-m-bell-alert',
+                        'CRITICAL' => 'heroicon-m-bell',
+                        'WARNING'  => 'heroicon-m-exclamation-triangle',
                         'SUCCESS'  => 'heroicon-m-check-circle',
                         'INFO'     => 'heroicon-m-information-circle',
+                        'AUDIT'    => 'heroicon-m-defender-shield',
+                        'EXCEPTION' => 'heroicon-m-eye-slash',
                         default    => 'heroicon-m-question-mark-circle',
-                    }),
+                    })->formatStateUsing(fn (string $state, Syslog $record) =>$record->is_exception ? 'EXCEÇÃO': $state),
             ])
             ->defaultSort('received_at', 'desc')
             ->filters([
@@ -112,11 +111,13 @@ class SyslogResource extends Resource
                     'WARNING'  => '⚠️ Aviso',
                     'SUCCESS'  => '✅ Sucesso',
                     'INFO'     => 'ℹ️ Informação',
+                    'AUDIT'    => '🛡️ Auditoria',
                     ]),
 
                 SelectFilter::make('event_id')
                     ->label('Tipo de Evento')
                     ->options([
+                        1000 => '1000 - Auditoria de Grupo',
                         1149 => '1149 - Tentativa de Logon Interativo',
                         1249 => '1249 - Tentativa de Logon de Rede',
                         2149 => '2149 - Tentativa de Logon Remoto',
@@ -157,9 +158,22 @@ class SyslogResource extends Resource
             ])
             ->actions([
                 ViewAction::make()->slideOver(),
+                Action::make('toggleException')
+                    ->label(fn (Syslog $record) =>$record->is_exception ? 'Restaurar' : 'Ignorar Log')
+                    ->icon(fn (Syslog $record) => $record->is_exception ? 'heroicon-o-arrow-path' : 'heroicon-o-eye-slash')
+                    ->color(fn (Syslog $record) => $record->is_exception ? 'gray' : 'lime')
+                    ->action(function (Syslog $record) {
+                        $record->update(['is_exception' => !$record->is_exception]);
+                    }),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
+                    BulkAction::make('marcarExcecao')
+                        ->label('Marcar como Exceção')
+                        ->icon('heroicon-m-eye-slash')
+                        ->color('lime')
+                        ->action(fn (EloquentCollection $records) => $records->each->update(['is_exception' => true]))
+                        ->deselectRecordsAfterCompletion(),
                     ExportBulkAction::make()
                         ->label('Exportar para Excel (xlsx)')
                         ->icon('heroicon-m-table-cells')
@@ -169,7 +183,7 @@ class SyslogResource extends Resource
                         ->label('Exportar para PDF')
                         ->icon('heroicon-m-document-text')
                         ->color('danger')
-                        ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
+                        ->action(function (EloquentCollection $records) {
                             $html = "
                             <style>
                                 body { font-family: sans-serif; font-size: 11px; color: #333; }
@@ -194,6 +208,10 @@ class SyslogResource extends Resource
                                         <th>IP Origem</th>
                                         <th>Estação (Workstation)</th>
                                         <th>Domínio/Grupo</th>
+                                        <th>País</th>
+                                        <th>Cidade</th>
+                                        <th>Latitude</th>
+                                        <th>Longitude</th>
                                     </tr>
                                 </thead>
                                 <tbody>";
@@ -209,6 +227,10 @@ class SyslogResource extends Resource
                                         <td>{$record->ip_address}</td>
                                         <td>" . ($record->workstation ?? $record->hostname ?? 'N/A') . "</td>
                                         <td>" . ($record->workgroup ?? 'N/A') . "</td>
+                                        <td>" . ($record->country ?? 'N/A') . "</td>
+                                        <td>" . ($record->city ?? 'N/A') . "</td>
+                                        <td>" . ($record->latitude ?? 'N/A') . "</td>
+                                        <td>" . ($record->longitude ?? 'N/A') . "</td>
                                     </tr>";
                             }
 
@@ -231,6 +253,10 @@ class SyslogResource extends Resource
     }
 
     public static function infolist(Schema $schema): Schema {
+
+        $lat = $schema->record->latitude ?? 40.2033; // Latitude de Oliveira do Hospital como fallback
+        $lon = $schema->record->longitude ?? -7.8500; // Longitude de Oliveira do Hospital como fallback
+
         return $schema->schema([
             Tabs::make('Detalhes do Log')
             ->tabs([
@@ -246,6 +272,7 @@ class SyslogResource extends Resource
                         'WARNING'  => '#fff700',
                         'SUCCESS'  => '#00ff62',
                         'INFO'     => '#0062ff',
+                        'AUDIT'    => '#00c8ff',
                         default    => 'gray',
                     }),
                     Grid::make(3)->schema([
@@ -257,6 +284,10 @@ class SyslogResource extends Resource
                         TextEntry::make('workstation')->label('Estação Atacada (Workstation)')->weight('bold'),
                         TextEntry::make('workgroup')->label('Domínio / Workgroup Windows'),
                         TextEntry::make('hostname')->label('Hostname Técnico (Docker/DNS)'),
+                        TextEntry::make('country')->label('País'),
+                        TextEntry::make('city')->label('Cidade'),
+                        TextEntry::make('latitude')->label('Latitude'),
+                        TextEntry::make('longitude')->label('Longitude'),
                     ]),
                 ]),
                 Tabs\Tab::make('metadados XML Bruto')
@@ -269,7 +300,17 @@ class SyslogResource extends Resource
                         'class' => 'bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-xs max-h-96'
                     ]),
                 ]),
+                Tabs\Tab::make('Localização Geográfica')
+                ->icon('heroicon-m-map')
+                ->schema([
+                    Map::make('location')
+                    ->label('Localização Geográfica do IP de Origem')
+                    ->zoom(5)
+                    ->defaultLocation($lat, $lon)
+                ])
             ])->columnSpanFull(),
+            
         ]);
     }
+
 }

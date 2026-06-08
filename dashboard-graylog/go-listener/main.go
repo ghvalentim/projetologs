@@ -12,7 +12,6 @@ func main() {
 
 	// 1. Inicializa conexões com os serviços (Postgres e Redis no Docker)
 	initDB()
-	initRedis()
 
 	// 2. Inicia o servidor UDP (o próprio network.go vai disparar o listenLoop em background)
 	ser, err := StartUDPServer()

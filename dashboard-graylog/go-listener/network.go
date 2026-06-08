@@ -78,6 +78,13 @@ func getLocalMAC() string {
 	return ""
 }
 
+func getEnv(key, fallback string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return fallback
+}
+
 // StartUDPServer inicializa o listener de Syslog e escuta pacotes de forma assíncrona
 func StartUDPServer() (*net.UDPConn, error) {
 	port := getEnv("LISTENER_PORT", "1514") // Padrão do teu container interno
@@ -109,7 +116,6 @@ func listenLoop(ser *net.UDPConn) {
 	for {
 		n, remoteAddr, err := ser.ReadFromUDP(p)
 		if err != nil {
-			fmt.Printf("📡 BYTES BRUTOS RECEBIDOS de %s: %s\n", remoteAddr, string(p[:n]))
 			// Evita flood de logs no console caso a conexão seja fechada intencionalmente
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				continue

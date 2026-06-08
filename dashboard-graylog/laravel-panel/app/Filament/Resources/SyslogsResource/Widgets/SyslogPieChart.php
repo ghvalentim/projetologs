@@ -6,6 +6,7 @@ use App\Models\Syslog;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Filament\Support\Colors\Color;
 
 class SyslogPieChart extends ChartWidget
 {
@@ -54,18 +55,29 @@ class SyslogPieChart extends ChartWidget
         // 3. Executa a query ao Postgres agrupando por severidade no período definido
         $severidades = Syslog::select('severity', DB::raw('count(*) as total'))
             ->whereBetween('received_at', [$inicioPeriodo, $fimPeriodo])
+            ->where('is_exception', false) // Exclui os logs marcados como exceção
             ->groupBy('severity')
             ->pluck('total', 'severity')
             ->toArray();
 
         // 4. Garante a ordem exata das fatias da pizza e das legendas
-        $labels = ['INFO', 'WARNING', 'CRITICAL', 'EMERGENCY', 'SUCCESS'];
+        $labels = ['INFO', 'WARNING', 'CRITICAL', 'EMERGENCY', 'SUCCESS', 'AUDIT'];
         $data = [
             $severidades['INFO'] ?? 0,
             $severidades['WARNING'] ?? 0,
             $severidades['CRITICAL'] ?? 0,
             $severidades['EMERGENCY'] ?? 0,
             $severidades['SUCCESS'] ?? 0,
+            $severidades['AUDIT'] ?? 0,
+        ];
+
+        $colors = [
+            Color::Blue[500],
+            Color::Yellow[500],
+            Color::Orange[500],
+            Color::Red[600],
+            Color::Emerald[600],
+            Color::Indigo[500],
         ];
 
         return [
@@ -73,14 +85,7 @@ class SyslogPieChart extends ChartWidget
                 [
                     'label' => 'Total de Logs',
                     'data' => $data,
-                    'backgroundColor' => [
-                        '#0066FF', // INFO (Azul Vivo)
-                        '#CCFF00', // WARNING (Amarelo Radioativo)
-                        '#FF5F00', // CRITICAL (Laranja Neon)
-                        '#FF0000', // EMERGENCY (Vermelho Berrante)
-                        '#00FF66', // SUCCESS (Verde)
-                    ],
-                    // Cor da borda que separa as fatias da pizza (combina bem no modo dark/light)
+                    'backgroundColor' => $colors,
                     'borderColor' => '#1e293b', 
                     'borderWidth' => 2,
                 ],
