@@ -72,11 +72,11 @@ class SyslogPieChart extends ChartWidget
         ];
 
         $colors = [
-            Color::Blue[500],
+            Color::Blue[700],
             Color::Yellow[500],
             Color::Orange[500],
             Color::Red[600],
-            Color::Emerald[600],
+            Color::Emerald[700],
             Color::Indigo[500],
         ];
 
@@ -87,7 +87,7 @@ class SyslogPieChart extends ChartWidget
                     'data' => $data,
                     'backgroundColor' => $colors,
                     'borderColor' => '#1e293b', 
-                    'borderWidth' => 2,
+                    'borderWidth' => 1,
                 ],
             ],
             'labels' => $labels,

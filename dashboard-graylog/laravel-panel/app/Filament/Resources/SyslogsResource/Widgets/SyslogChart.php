@@ -6,6 +6,7 @@ use App\Models\Syslog;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Filament\Support\Colors\Color;
 
 class SyslogChart extends ChartWidget
 {
@@ -72,8 +73,8 @@ class SyslogChart extends ChartWidget
                 [
                     'label' => 'Quantidade de Logs',
                     'data' => $dadosData,
-                    'backgroundColor' => $filtroAtivo === 'dia' ? '#10b981' : '#3b82f6', // Verde para dias, Azul para horas
-                    'borderColor' => $filtroAtivo === 'dia' ? '#059669' : '#2563eb', 
+                    'backgroundColor' => $filtroAtivo === 'dia' ? Color::Emerald[700] : Color::Blue[700], // Verde para dias, Azul para horas
+                    'borderColor' => $filtroAtivo === 'dia' ? Color::Emerald[500] : Color::Blue[500], 
                     'borderRadius' => 4, 
                 ],
             ],

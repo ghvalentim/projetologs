@@ -88,7 +88,7 @@ class SyslogResource extends Resource
                         'INFO'     => 'info',
                         'AUDIT'    => 'audit',
                         'EXCEPTION' => 'exception',
-                        default    => 'gray',
+                        'UNKNOWN' => 'gray',
                     })
                     ->icon(fn (Syslog $syslog): string => $syslog->is_exception ? 'heroicon-m-eye-slash' : match ($syslog->severity) {
                         'EMERGENCY' => 'heroicon-m-bell-alert',
@@ -98,7 +98,7 @@ class SyslogResource extends Resource
                         'INFO'     => 'heroicon-m-information-circle',
                         'AUDIT'    => 'heroicon-m-defender-shield',
                         'EXCEPTION' => 'heroicon-m-eye-slash',
-                        default    => 'heroicon-m-question-mark-circle',
+                        'UNKNOWN' => 'heroicon-m-question-mark-circle',
                     })->formatStateUsing(fn (string $state, Syslog $record) =>$record->is_exception ? 'EXCEÇÃO': $state),
             ])
             ->defaultSort('received_at', 'desc')
@@ -112,6 +112,7 @@ class SyslogResource extends Resource
                     'SUCCESS'  => '✅ Sucesso',
                     'INFO'     => 'ℹ️ Informação',
                     'AUDIT'    => '🛡️ Auditoria',
+                    'UNKNOWN'  => '❓ Desconhecido',
                     ]),
 
                 SelectFilter::make('event_id')
