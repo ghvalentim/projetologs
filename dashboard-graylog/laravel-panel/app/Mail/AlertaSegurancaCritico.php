@@ -41,4 +41,5 @@ class AlertaSegurancaCritico extends Mailable
             ",
         );
     }
+
 }

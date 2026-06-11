@@ -17,6 +17,7 @@ use App\Filament\Widgets\LicenseAlertsWidget;
 use App\Filament\Widgets\DepartmentDistributionChart;
 use App\Filament\Widgets\SyslogChart;
 use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\Pages\Settings;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -25,11 +26,30 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
+use App\Models\Setting;
 
 class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
+
+    $pollingInterval = Setting::where('key', 'syslog_polling_interval')->first()?->value ?? '5';
+
+    try {
+         $savedColor = Setting::where('key', 'theme_primary_color')->first()?->value ?? 'blue';
+    } catch (\Exception $e) {
+        $savedColor = 'blue';
+        }
+
+        $primaryColor = match ($savedColor) {
+            'emerald' => Color::Emerald,
+            'amber' => Color::Amber,
+            'rose' => Color::Rose,
+            'indigo' => Color::Indigo[700],
+            'violet' => Color::Violet,
+            default => Color::Blue,
+        };
+                
         return $panel
             ->default()
             ->id('admin')
@@ -39,25 +59,18 @@ class AdminPanelProvider extends PanelProvider
             ->darkModeBrandLogo(asset('images/municipio-fundoescuro.webp'))
             ->brandName('Central de Logs')
             ->databaseNotifications()
-            ->databaseNotificationsPolling('2s')
+            ->databaseNotificationsPolling($pollingInterval . 's')
             ->login()
-            ->colors([
-                'primary' => Color::Amber,
-                'secondary' => Color::Slate,
-                'success' => Color::Emerald,
-                'info' => Color::Blue[800],
-                'warning' => Color::Yellow,
-                'critical' => Color::Orange,
-                'emergency' => Color::Red,
-                'audit' => Color::Indigo,
-                'gray' => Color::Gray,
-                'exception' => Color::Lime,
+            ->colors(
+                [
+                'primary' => $primaryColor,
             ])
             ->profile(EditProfile::class)
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([
                 Dashboard::class,
+                Settings::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([

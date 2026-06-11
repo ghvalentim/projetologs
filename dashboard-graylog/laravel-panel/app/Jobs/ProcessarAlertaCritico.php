@@ -10,6 +10,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\Setting;
+use App\Mail\AlertaSegurancaCritico as AlertaEmail;
+use Illuminate\Support\Facades\Mail;
 
 class ProcessarAlertaCritico implements ShouldQueue
 {
@@ -35,6 +38,8 @@ class ProcessarAlertaCritico implements ShouldQueue
         'received_at' => now(),
     ]);
 
+    $deveEnviarEmail = Setting::where('key', 'notify_emergency_email')->first()?->value === '1';
+
     // Dispara para o Filament
     $recipient = User::all(); 
 
@@ -50,6 +55,10 @@ class ProcessarAlertaCritico implements ShouldQueue
             ->danger()
             ->color($syslog->severity === 'EMERGENCY' ? 'danger' : 'warning')
             ->sendToDatabase($recipient);
+        
+        if ($deveEnviarEmail) {
+            Mail::to($recipient)->send(new AlertaEmail($this->logData));
+        }
     }
 }
 }

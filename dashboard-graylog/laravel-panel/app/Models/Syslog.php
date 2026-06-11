@@ -55,20 +55,20 @@ class Syslog extends Model
             return match ((string)$this->event_id) {
                 '4625' => "🚨 Alerta de Segurança: Tentativa de autenticação FALHADA para o utilizador [{$username}] na estação [{$maquinaOrigem}] com origem no IP {$ip}.",
                 '4624' => "✅ Sucesso de Login: O utilizador [{$username}] autenticou-se com SUCESSO na estação [{$maquinaOrigem}] a partir do IP {$ip}.",
-                '4798' => "🔍 Auditoria de Contas: O utilizador [{$username}] foi ADICIONADO ao grupo de administradores locais na estação [{$maquinaOrigem}].",
+                '4798' => " 🕵️ Auditoria de Contas: O utilizador [{$username}] foi ADICIONADO ao grupo de administradores locais na estação [{$maquinaOrigem}].",
                 '4672' => "⚡ Privilégios Especiais: O utilizador [{$username}] realizou uma ação com privilégios elevados na estação [{$maquinaOrigem}] a partir do IP {$ip}.",
                 'ADMIN_LOGIN_AUTO' => "✅ Login Administrativo Automático: Conta Microsoft autenticada com privilégios elevados na estação [{$maquinaOrigem}] a partir do IP {$ip}.",
                 'SYS_PRIV_AUTO' => "ℹ️ Atribuição de privilégios de rotina (Processo do Sistema) na estação [{$maquinaOrigem}].",
                 'PRIV_ESCALATION' => "⚠️ Abuso de Privilégio: Tentativa humana de usar permissões reservadas na estação [{$maquinaOrigem}] a partir do IP {$ip}.",
-                'AUDIT_MGMT' => "ℹ️ Log de Auditoria: Atividade registada para o utilizador [{$username}] na estação [{$maquinaOrigem}] a partir do IP {$ip}.",
+                'AUDIT_MGMT' => " 🕵️ Log de Auditoria: Atividade registada para o utilizador [{$username}] na estação [{$maquinaOrigem}] a partir do IP {$ip}.",
                 
                 
                 // IDs comuns de monitorização de rede ou regras de firewall do Windows
                 '2004', '2006', '5152' => "⚠️ Firewall: Uma ligação de rede com origem em {$ip} foi bloqueada pelas diretivas do sistema.",
                 
                 default => !empty($this->username) 
-                    ? "ℹ️ Auditoria: Atividade registada para o utilizador [{$username}] no host {$this->hostname} (Workstation: {$this->workstation})."
-                    : "ℹ️ Sistema: Log de auditoria geral processado para o IP {$ip}."
+                    ? " 🕵️ Auditoria: Atividade registada para o utilizador [{$username}] no host {$this->hostname} (Workstation: {$this->workstation})."
+                    : " 🕵️ Sistema: Log de auditoria geral processado para o IP {$ip}."
             };
         });
     }

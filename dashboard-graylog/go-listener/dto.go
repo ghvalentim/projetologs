@@ -137,7 +137,7 @@ func ClassifyLog(rawMessage string, logData *SyslogData) {
 				logData.User = "ADMIN_LOCAL"
 			}
 			logData.Msg = "🛡️ Auditoria: Privilégios de Administrador atribuídos no login (Comportamento normal)."
-		} else {
+		} else if regexp.MustCompile(`(?i)(Explicit credentials|Privilégios Especiais|Special privileges|Privileged Service)`).MatchString(rawMessage) {
 			logData.ID = "PRIV_ESCALATION"
 			logData.Severity = "EMERGENCY"
 			matches := regexp.MustCompile(`(?i)Nome da Conta:\s*([a-zA-Z0-9_$-.@]+)`).FindAllStringSubmatch(rawMessage, -1)
@@ -149,14 +149,56 @@ func ClassifyLog(rawMessage string, logData *SyslogData) {
 				logData.User = "UNKNOWN"
 			}
 			logData.Msg = "⚠️ Abuso de Privilégio: Tentativa humana de usar permissões reservadas."
-		}
-
-	// Adiciona aqui os teus outros else ifs (routerDhcp, attackRegex, successRegex, etc)...
-	
-	} else {
+		}  else if successRegex.MatchString(rawMessage) {
+			if regexp.MustCompile(`(?i)MicrosoftAccount|user`).MatchString(rawMessage) {
+			logData.ID = "4624"
+			logData.Severity = "SUCCESS"
+			matches := regexp.MustCompile(`(?i)Nome da Conta:\s*([a-zA-Z0-9_$-.@]+)`).FindAllStringSubmatch(rawMessage, -1)
+			if len(matches) > 1 {
+				logData.User = matches[1][1]
+			} else if len(matches) > 0 {
+				logData.User = matches[0][1]
+			} else {
+				logData.User = "DEFAULT_USER"
+			}
+			logData.Msg = "✅ Sucesso de Login" + vetorAcesso + " detetado."
+			}
+		} else if auditRegex.MatchString(rawMessage) {
+			logData.ID = "AUDIT_MGMT"
+			logData.Severity = "AUDIT"
+			matches := regexp.MustCompile(`(?i)Nome da Conta:\s*([a-zA-Z0-9_$-.@]+)`).FindAllStringSubmatch(rawMessage, -1)
+			if len(matches) > 1 {
+				logData.User = matches[1][1]
+			} else if len(matches) > 0 {
+				logData.User = matches[0][1]
+			} else {
+				logData.User = "UNKNOWN"
+			}
+			logData.Msg = "🛡️ Log de Auditoria: Atividade registada para o utilizador."
+		} else if attackRegex.MatchString(rawMessage) {
+		logData.ID = "POTENTIAL_ATTACK"
+		logData.Severity = "CRITICAL"
+		logData.User = "UNKNOWN"
+		logData.Msg = "🚨 Potencial Ataque Detetado: Padrão suspeito identificado no log."
+		} else if routerDhcpRegex.MatchString(rawMessage) {
+		logData.ID = "ROUTER_DHCP"
+		logData.Severity = "INFO"
+		logData.User = "DHCP_SERVICE"
+		logData.Msg = "📡 DHCP: Evento relacionado a atribuição ou renovação de IP detectado no roteador."
+		} else if routerLinkRegex.MatchString(rawMessage) {
+		logData.ID = "ROUTER_LINK"
+		logData.Severity = "INFO"
+		logData.User = "NETWORK_INTERFACE"
+		logData.Msg = "🔗 Link de Rede: Alteração de estado da interface detectada no roteador."
+		} else if routerVpnRegex.MatchString(rawMessage) {
+		logData.ID = "ROUTER_VPN"
+		logData.Severity = "INFO"
+		logData.User = "VPN_SERVICE"
+		logData.Msg = "🔒 VPN: Evento relacionado a conexões VPN detectado no roteador."
+		} else {
 		logData.ID = "SYS_UNCLASSIFIED"
 		logData.Severity = "WARNING"
 		logData.User = "UNKNOWN"
 		logData.Msg = "⚠️ Evento não classificado/desconhecido capturado."
-	}
-}
+	};
+}}

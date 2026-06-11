@@ -25,7 +25,6 @@ use Filament\Schemas\Schema;
 use Dotswan\MapPicker\Fields\Map;
 use Filament\Actions\Action;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
 
 class SyslogResource extends Resource
 {
@@ -94,15 +93,23 @@ class SyslogResource extends Resource
                         'EMERGENCY' => 'heroicon-m-bell-alert',
                         'CRITICAL' => 'heroicon-m-bell',
                         'WARNING'  => 'heroicon-m-exclamation-triangle',
-                        'SUCCESS'  => 'heroicon-m-check-circle',
+                        'SUCCESS'  => 'heroicon-m-check-badge',
                         'INFO'     => 'heroicon-m-information-circle',
-                        'AUDIT'    => 'heroicon-m-defender-shield',
+                        'AUDIT'    => 'heroicon-m-shield-check',
                         'EXCEPTION' => 'heroicon-m-eye-slash',
                         'UNKNOWN' => 'heroicon-m-question-mark-circle',
-                    })->formatStateUsing(fn (string $state, Syslog $record) =>$record->is_exception ? 'EXCEÇÃO': $state),
+                    })->formatStateUsing(fn (Syslog $record): string => $record->is_exception ? 'EXCEÇÃO': match ($record->severity) {
+                    'EMERGENCY' => 'Emergência',
+                    'CRITICAL' => 'Crítico',
+                    'WARNING'  => 'Aviso',
+                    'SUCCESS'  => 'Sucesso',
+                    'INFO'     => 'Informação',
+                    'AUDIT'    => 'Auditoria',
+                    'UNKNOWN'  => 'Desconhecido',
+                    }),
             ])
-            ->defaultSort('received_at', 'desc')
-            ->filters([
+                    ->defaultSort('received_at', 'desc')
+                    ->filters([
                 SelectFilter::make('severity')
                     ->label('Filtrar por Severidade')
                     ->options([
@@ -308,7 +315,7 @@ class SyslogResource extends Resource
                     ->label('Localização Geográfica do IP de Origem')
                     ->zoom(5)
                     ->defaultLocation($lat, $lon)
-                ])
+                ]),
             ])->columnSpanFull(),
             
         ]);
