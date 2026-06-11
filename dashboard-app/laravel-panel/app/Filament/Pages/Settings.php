@@ -14,12 +14,14 @@ use Filament\Schemas\Schema;
 // 🎯 OS NOVOS IMPORTS OFICIAIS DE LAYOUT DA VERSÃO ATUAL:
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Section;
+use UnitEnum;
 
 class Settings extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
-    protected static ?string $navigationLabel = 'Configurações';
-    protected static ?string $title = 'Painel de Configurações';
+    protected static ?string $title = 'Definições do Sistema';
+    protected static ?string $navigationLabel = 'Definições';
+    protected static string|UnitEnum|null $navigationGroup = 'Sistema';
 
     protected    string $view = 'filament.pages.settings';
 

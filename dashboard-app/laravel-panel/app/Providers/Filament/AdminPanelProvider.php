@@ -33,12 +33,14 @@ class AdminPanelProvider extends PanelProvider
     public function panel(Panel $panel): Panel
     {
 
-    $pollingInterval = Setting::where('key', 'syslog_polling_interval')->first()?->value ?? '5';
+    $pollingInterval = '5';
+    $savedColor = 'blue';
 
     try {
+         $pollingInterval = Setting::where('key', 'notifications_polling_interval')->first()?->value ?? '5';
          $savedColor = Setting::where('key', 'theme_primary_color')->first()?->value ?? 'blue';
     } catch (\Exception $e) {
-        $savedColor = 'blue';
+        
         }
 
         $primaryColor = match ($savedColor) {

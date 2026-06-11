@@ -29,7 +29,7 @@ class UserResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-users';
     
     // 👇 1. Isto cria automaticamente a secção "Configurações" no menu lateral
-    protected static string|UnitEnum|null $navigationGroup = 'Configurações';
+    protected static string|UnitEnum|null $navigationGroup = 'Sistema';
     protected static ?string $modelLabel = 'Utilizador';
     protected static ?string $pluralModelLabel = 'Utilizadores';
 
