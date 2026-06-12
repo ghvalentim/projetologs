@@ -19,6 +19,7 @@ RUN docker-php-ext-install pdo pdo_pgsql bcmath gd intl zip
 RUN apk add --no-cache --virtual .build-deps \
         $PHPIZE_DEPS \
         linux-headers \
+    && pecl channel-update pecl.php.net \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del .build-deps
