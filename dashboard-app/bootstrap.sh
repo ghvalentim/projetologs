@@ -17,13 +17,39 @@ else
 fi
 
 echo -e "\n=== Iniciando containers Docker ==="
-docker compose up -d --build
+
+if [ -f docker-compose.yml ]; then
+    echo "✓ docker-compose.yml encontrado. Iniciando containers..."
+    if ! command -v docker &> /dev/null; then
+        echo "❌ Erro: Docker não está instalado ou não está no PATH. Por favor, instale o Docker para continuar."
+        exit 1
+    else 
+        echo "✓ Docker encontrado. Continuando com a inicialização dos containers."
+        if ! command -v docker compose &> /dev/null; then
+            echo "❌ Erro: Docker Compose não está disponível. Certifique-se de que você tem uma versão do Docker que inclui o Docker Compose."
+            exit 1
+        else
+            echo "✓ Docker Compose encontrado. Continuando com a inicialização dos containers."
+            #se docker já estiver rodando, fazer docker compose down para evitar conflitos
+            if docker compose ps -q; then
+                echo "⚠️ Containers Docker já estão rodando. Parando containers existentes para evitar conflitos..."
+                docker compose down
+                echo "✓ Containers parados com sucesso. Continuando com a inicialização."
+            else
+                echo "✓ Nenhum container Docker em execução. Continuando com a inicialização."
+            fi
+        fi
+    fi
+else
+    echo "❌ Erro: docker-compose.yml não foi encontrado! Certifique-se de estar no diretório correto."
+    exit 1
+fi
 
 echo -e "\n=== Instalando dependências (Composer) ==="
-# Usando o container em execução para rodar o composer
-docker compose run --rm laravel-app composer install --no-interaction --prefer-dist --optimize-autoloader
-
-docker compose up -d # Garantir que o container continue rodando após a instalação do composer
+docker compose run --rm --no-deps laravel-app composer install --no-interaction --prefer-dist --optimize-autoloader
+echo "✓ Dependências do Composer instaladas com sucesso."
+echo "\n=== Iniciando containers Docker ==="
+docker compose up -d --build # Garantir que o container continue rodando após a instalação do composer
 
 echo -e "\n=== Configurando o Laravel ==="
 docker compose exec laravel-app php artisan key:generate
