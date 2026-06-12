@@ -17,8 +17,9 @@ RUN docker-php-ext-install pdo pdo_pgsql bcmath gd intl zip
 
 # 3. Instalar e ativar a extensão Redis nativa de forma compatível com Alpine
 RUN apk add --no-cache --virtual .build-deps autoconf g++ make \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+    && mkdir -p /usr/src/php/ext/redis \
+    && curl -fsSL https://github.com/phpredis/phpredis/archive/refs/tags/5.3.4.tar.gz | tar xvz -C /usr/src/php/ext/redis --strip-components=1 \
+    && docker-php-ext-install redis \
     && apk del .build-deps
 
 # 4. Importar o Composer oficial mais recente
