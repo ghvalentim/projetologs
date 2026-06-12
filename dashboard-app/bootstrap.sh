@@ -25,7 +25,7 @@ if [ -f docker-compose.yml ]; then
         exit 1
     else 
         echo "✓ Docker encontrado. Continuando com a inicialização dos containers."
-        if ! command -v docker compose &> /dev/null; then
+        if ! command -v compose &> /dev/null; then
             echo "❌ Erro: Docker Compose não está disponível. Certifique-se de que você tem uma versão do Docker que inclui o Docker Compose."
             exit 1
         else
@@ -41,7 +41,7 @@ if [ -f docker-compose.yml ]; then
         fi
     fi
 else
-    echo "❌ Erro: docker-compose.yml não foi encontrado! Certifique-se de estar no diretório correto."
+    echo "❌ Erro: compose.yml não foi encontrado! Certifique-se de estar no diretório correto."
     exit 1
 fi
 
