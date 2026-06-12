@@ -21,7 +21,9 @@ docker compose up -d --build
 
 echo -e "\n=== Instalando dependências (Composer) ==="
 # Usando o container em execução para rodar o composer
-docker compose exec laravel-app composer install --no-interaction --prefer-dist --optimize-autoloader
+docker compose run --rm laravel-app composer install --no-interaction --prefer-dist --optimize-autoloader
+
+docker compose up -d # Garantir que o container continue rodando após a instalação do composer
 
 echo -e "\n=== Configurando o Laravel ==="
 docker compose exec laravel-app php artisan key:generate
