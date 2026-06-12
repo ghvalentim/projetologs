@@ -18,14 +18,14 @@ fi
 
 echo -e "\n=== Iniciando containers Docker ==="
 
-if [ -f docker-compose.yml ]; then
-    echo "✓ docker-compose.yml encontrado. Iniciando containers..."
+if [ -f compose.yml ]; then
+    echo "✓ compose.yml encontrado. Iniciando containers..."
     if ! command -v docker &> /dev/null; then
         echo "❌ Erro: Docker não está instalado ou não está no PATH. Por favor, instale o Docker para continuar."
         exit 1
     else 
         echo "✓ Docker encontrado. Continuando com a inicialização dos containers."
-        if ! command -v compose &> /dev/null; then
+        if ! command -v docker compose &> /dev/null; then
             echo "❌ Erro: Docker Compose não está disponível. Certifique-se de que você tem uma versão do Docker que inclui o Docker Compose."
             exit 1
         else
