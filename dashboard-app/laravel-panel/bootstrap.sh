@@ -3,10 +3,10 @@
 set -e
 
 echo "=== Checando .env ==="
-if [ -f .env]; then
+if [ -f .env ]; then
     echo "✓ .env já existe. Avançando."
 else
-    if [ -f .env.example]; then
+    if [ -f .env.example ]; then
         echo "➜ Criando .env a partir de .env.example..."
         cp .env.example .env
         echo "✓ Ficheiro .env criado com sucesso."
