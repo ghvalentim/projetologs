@@ -3,12 +3,12 @@
 set -e
 
 echo "=== Checando .env ==="
-if [ -f .env ]; then
+if [ -f laravel-panel/.env ]; then
     echo "✓ .env já existe. Avançando."
 else
-    if [ -f .env.example ]; then
+    if [ -f laravel-panel/.env.example ]; then
         echo "➜ Criando .env a partir de .env.example..."
-        cp .env.example .env
+        cp laravel-panel/.env.example laravel-panel/.env
         echo "✓ Ficheiro .env criado com sucesso."
     else
         echo "❌ Erro: .env.example não foi encontrado! Não é possível criar o .env."
