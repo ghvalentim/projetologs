@@ -46,8 +46,23 @@ else
 fi
 
 echo -e "\n=== Instalando dependências (Composer) ==="
-docker compose run --rm --no-deps laravel-app composer install --no-interaction --prefer-dist --optimize-autoloader
-echo "✓ Dependências do Composer instaladas com sucesso."
+
+#verificar se dependências do composer já estão instaladas, se sim pular a instalação, se não instalar as dependências
+if [ -d laravel-panel/vendor ]; then
+    echo "✓ Dependências do Composer já estão instaladas. Pulando instalação..."
+else
+    echo "⚠️ Dependências do Composer não encontradas. Iniciando instalação..."
+    if ! command -v composer &> /dev/null; then
+        echo "⚠️ Composer não encontrado localmente. Usando composer dentro do container Docker para instalar dependências..."
+        docker compose run --rm --no-deps laravel-app composer install --no-interaction --prefer-dist --optimize-autoloader
+        echo "✓ Dependências do Composer instaladas com sucesso usando o composer dentro do container Docker."
+    else
+        echo "✓ Composer encontrado localmente. Usando composer local para instalar dependências..."
+        composer install --no-interaction --prefer-dist --optimize-autoloader
+        echo "✓ Dependências do Composer instaladas com sucesso usando o composer local."
+    fi
+fi
+
 echo "\n=== Iniciando containers Docker ==="
 docker compose up -d --build # Garantir que o container continue rodando após a instalação do composer
 
